@@ -12,17 +12,15 @@ from mirutil.pathes import has_subdir
 
 
 class Params :
-    _pth = '/Users/mahdi/Library/CloudStorage/OneDrive-khatam.ac.ir/Heidari Data/V2'
+    _pth = '/Users/mahdi/Library/CloudStorage/OneDrive-khatam.ac.ir/Datasets/Heidari Data/V2'
     root_dir = Path(_pth)
 
 p = Params()
 
 class ColName :
     path = 'path'
-    fdir = 'final_dir'
-    ls = 'list_dir'
-    dp = 'dp'
-    mp = 'mp'
+    dfp = 'dfp'
+    mfp = 'mfp'
 
 c = ColName()
 
@@ -39,6 +37,13 @@ def list_dir(dirp: Path) :
     lo = [i for i in lo if i.name != '.DS_Store']
     return lo
 
+def find_data_fp(pth) :
+    lo = list_dir(pth)
+    lo.remove(pth / 'meta.json')
+    lo = [x for x in lo if not x.name.startswith('Sample-')]
+    assert len(lo) == 1
+    return lo[0]
+
 def update_meta(mp , dp) :
     with open(mp , 'r') as f :
         js = json.load(f)
@@ -49,6 +54,9 @@ def update_meta(mp , dp) :
         if js[mc.tcol] in df.columns :
             js[mc.start] = df[js[mc.tcol]].min()
             js[mc.end] = df[js[mc.tcol]].max()
+    else :
+        js[mc.start] = None
+        js[mc.end] = None
 
     js[mc.cols] = list(df.columns)
 
@@ -64,22 +72,14 @@ def main() :
     df = pd.DataFrame()
     df[c.path] = list(subs)
     ##
-    df[c.fdir] = ~ df[c.path].apply(has_subdir)
-    ##
-    df = df[df[c.fdir]]
-    ##
-    df[c.ls] = df[c.path].apply(list_dir)
-    ##
-    df[c.mp] = df[c.ls].apply(
-            lambda x : x[0] if x[0].name == 'meta.json' else x[1]
-            )
-    ##
-    df[c.dp] = df[c.ls].apply(
-            lambda x : x[0] if x[0].name != 'meta.json' else x[1]
-            )
+    msk = ~ df[c.path].apply(has_subdir)
 
+    df = df[msk]
     ##
-    _ = df.apply(lambda x : update_meta(x[c.mp] , x[c.dp]) , axis = 1)
+    df[c.mfp] = df[c.path] / 'meta.json'
+    df[c.dfp] = df[c.path].apply(find_data_fp)
+    ##
+    _ = df.apply(lambda x : update_meta(x[c.mfp] , x[c.dfp]) , axis = 1)
 
     ##
 
